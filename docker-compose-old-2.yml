@@ -1,0 +1,92 @@
+version: '3.9'
+
+networks:
+  wordpress:
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+services:
+
+  # here is our mysql database
+  db:
+    image: mysql:5.7
+    volumes:
+      - ./db:/var/lib/mysql:delegated
+    ports:
+      - "3306:3306"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: somewordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    networks:
+      - wordpress
+
+  # here is our wordpress server
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:latest
+    volumes:
+      # our persistent local data mapping
+      - ./themes:/var/www/html/wp-content/themes
+      - ./plugins:/var/www/html/wp-content/plugins
+      - ./uploads:/var/www/html/wp-content/uploads
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    ports:
+      - "80:80"
+    restart: always
+    networks:
+      - wordpress
+    environment:
+
+      # our local dev environment
+      WORDPRESS_DEBUG: 1
+
+      # docker wp config settings
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_AUTH_KEY: 5f6ede1b94d25a2294e29eeba929a8c80a5ac0fb
+      WORDPRESS_SECURE_KEY: 5f6ede1b94d25a2294e29eeba929a8c80a5ac0fb
+      WORDPRESS_LOGGED_IN_KEY: 5f6ede1b94d25a2294e29eeba929a8c80a5ac0fb
+      WORDPRESS_NONCE_KEY: 5f6ede1b94d25a2294e29eeba929a8c80a5ac0fb
+      WORDPRESS_SECURE_AUTH_SALT: 5f6ede1b94d25a2294e29eeba929a8c80a5ac0fb
+      WORDPRESS_LOGGED_IN_SALT: 5f6ede1b94d25a2294e29eeba929a8c80a5ac0fb
+      WORDPRESS_NONCE_SALT: 5f6ede1b94d25a2294e29eeba929a8c80a5ac0fb
+
+      # our local dev environment
+      WORDPRESS_CONFIG_EXTRA: |
+
+        /* development parameters */
+        define('WP_CACHE', false);
+        define('ENVIRONMENT', 'local');
+
+        /* configure mail server */
+        define('WORDPRESS_SMTP_AUTH', false);
+        define('WORDPRESS_SMTP_SECURE', '');
+        define('WORDPRESS_SMTP_HOST', 'mailhog');
+        define('WORDPRESS_SMTP_PORT', '1025');
+        define('WORDPRESS_SMTP_USERNAME', null);
+        define('WORDPRESS_SMTP_PASSWORD', null);
+        define('WORDPRESS_SMTP_FROM', 'no-reply@yoursitedomain.com');
+        define('WORDPRESS_SMTP_FROM_NAME', 'Your Site Title');
+
+        if(!defined('WP_HOME')) {
+          /* force our home url */
+          define('WP_HOME', 'http://localhost');
+          define('WP_SITEURL', WP_HOME);
+        }
+
+
+  # here is our mail hog server
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025"
+    networks:
+      - wordpress

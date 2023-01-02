@@ -1,0 +1,4 @@
+themes
+plugins/akismet/*
+docker-compose-old.yml
+docker-compose-old-2.yml
